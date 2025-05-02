@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 offset-md-2">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Editar Lançamento</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="titulo" class="form-label">Título</label>
+                        <input type="text" class="form-control" id="titulo" name="titulo" 
+                               value="{{ orcamento.titulo }}" required minlength="3" maxlength="100">
+                        <div class="form-text">Mínimo de 3 caracteres</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="descricao" class="form-label">Descrição</label>
+                        <textarea class="form-control" id="descricao" name="descricao" 
+                                  rows="3">{{ orcamento.descricao }}</textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="valor" class="form-label">Valor (R$)</label>
+                        <input type="text" class="form-control" id="valor" name="valor" 
+                               value="{{ '%.2f'|format(orcamento.valor) }}" required
+                               pattern="^\d*[.,]?\d{0,2}$" 
+                               title="Digite um valor válido (ex: 100.50 ou 100,50)">
+                        <div class="form-text">Use ponto ou vírgula para decimais (ex: 100.50 ou 100,50)</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="categoria" class="form-label">Categoria</label>
+                        <select class="form-select" id="categoria" name="categoria" required>
+                            <option value="">Selecione uma categoria</option>
+                            <option value="Salário" {% if orcamento.categoria == 'Salário' %}selected{% endif %}>Salário</option>
+                            <option value="Investimentos" {% if orcamento.categoria == 'Investimentos' %}selected{% endif %}>Investimentos</option>
+                            <option value="Alimentação" {% if orcamento.categoria == 'Alimentação' %}selected{% endif %}>Alimentação</option>
+                            <option value="Transporte" {% if orcamento.categoria == 'Transporte' %}selected{% endif %}>Transporte</option>
+                            <option value="Moradia" {% if orcamento.categoria == 'Moradia' %}selected{% endif %}>Moradia</option>
+                            <option value="Saúde" {% if orcamento.categoria == 'Saúde' %}selected{% endif %}>Saúde</option>
+                            <option value="Educação" {% if orcamento.categoria == 'Educação' %}selected{% endif %}>Educação</option>
+                            <option value="Lazer" {% if orcamento.categoria == 'Lazer' %}selected{% endif %}>Lazer</option>
+                            <option value="Outros" {% if orcamento.categoria == 'Outros' %}selected{% endif %}>Outros</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Tipo</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="tipo" id="receita" 
+                                   value="receita" {% if orcamento.tipo == 'receita' %}checked{% endif %} required>
+                            <label class="form-check-label" for="receita">
+                                Receita
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="tipo" id="despesa" 
+                                   value="despesa" {% if orcamento.tipo == 'despesa' %}checked{% endif %}>
+                            <label class="form-check-label" for="despesa">
+                                Despesa
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+                        <a href="{{ url_for('index') }}" class="btn btn-secondary">Cancelar</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function validarFormulario() {
+    var titulo = document.getElementById('titulo').value;
+    var valor = document.getElementById('valor').value;
+    var categoria = document.getElementById('categoria').value;
+    var tipo = document.querySelector('input[name="tipo"]:checked');
+
+    if (titulo.length < 3) {
+        alert('O título deve ter pelo menos 3 caracteres!');
+        return false;
+    }
+
+    if (!valor || valor <= 0) {
+        alert('Digite um valor válido maior que zero!');
+        return false;
+    }
+
+    if (!categoria) {
+        alert('Selecione uma categoria!');
+        return false;
+    }
+
+    if (!tipo) {
+        alert('Selecione o tipo (Receita ou Despesa)!');
+        return false;
+    }
+
+    return true;
+}
+</script>
+{% endblock %} 

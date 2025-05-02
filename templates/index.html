@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card bg-primary text-white">
+            <div class="card-body">
+                <h5 class="card-title">Saldo Total</h5>
+                <h3 class="card-text">R$ {{ "%.2f"|format(saldo) }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card bg-success text-white">
+            <div class="card-body">
+                <h5 class="card-title">Total Receitas</h5>
+                <h3 class="card-text">R$ {{ "%.2f"|format(total_receitas) }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card bg-danger text-white">
+            <div class="card-body">
+                <h5 class="card-title">Total Despesas</h5>
+                <h3 class="card-text">R$ {{ "%.2f"|format(total_despesas) }}</h3>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Distribuição por Tipo</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="graficoTipo"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Distribuição por Categoria</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="graficoCategoria"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Últimos Lançamentos</h5>
+                <a href="{{ url_for('adicionar') }}" class="btn btn-primary btn-sm">
+                    <i class="fas fa-plus"></i> Novo Lançamento
+                </a>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Data</th>
+                                <th>Título</th>
+                                <th>Categoria</th>
+                                <th>Tipo</th>
+                                <th>Valor</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for orcamento in orcamentos %}
+                            <tr>
+                                <td>{{ orcamento.data.strftime('%d/%m/%Y') }}</td>
+                                <td>{{ orcamento.titulo }}</td>
+                                <td>{{ orcamento.categoria }}</td>
+                                <td>
+                                    <span class="badge bg-{{ 'success' if orcamento.tipo == 'receita' else 'danger' }}">
+                                        {{ orcamento.tipo|title }}
+                                    </span>
+                                </td>
+                                <td>R$ {{ "%.2f"|format(orcamento.valor) }}</td>
+                                <td>
+                                    <a href="{{ url_for('editar', id=orcamento.id) }}" class="btn btn-sm btn-warning">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <a href="{{ url_for('excluir', id=orcamento.id) }}" class="btn btn-sm btn-danger" 
+                                       onclick="return confirm('Tem certeza que deseja excluir este lançamento?')">
+                                        <i class="fas fa-trash"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Dados para o gráfico de tipo (Receitas vs Despesas)
+const dadosTipo = {
+    labels: ['Receitas', 'Despesas'],
+    datasets: [{
+        data: [{{ total_receitas }}, {{ total_despesas }}],
+        backgroundColor: ['#198754', '#dc3545'],
+        hoverOffset: 4
+    }]
+};
+
+// Configuração do gráfico de tipo
+const configTipo = {
+    type: 'doughnut',
+    data: dadosTipo,
+    options: {
+        responsive: true,
+        plugins: {
+            legend: {
+                position: 'bottom',
+            },
+            title: {
+                display: false
+            }
+        }
+    }
+};
+
+// Criar gráfico de tipo
+new Chart(
+    document.getElementById('graficoTipo'),
+    configTipo
+);
+
+// Preparar dados para o gráfico de categorias
+const categorias = {};
+{% for orcamento in orcamentos %}
+    if (!categorias['{{ orcamento.categoria }}']) {
+        categorias['{{ orcamento.categoria }}'] = 0;
+    }
+    categorias['{{ orcamento.categoria }}'] += {{ orcamento.valor }};
+{% endfor %}
+
+const cores = [
+    '#198754', '#dc3545', '#0d6efd', '#ffc107', 
+    '#6610f2', '#fd7e14', '#20c997', '#d63384'
+];
+
+const dadosCategoria = {
+    labels: Object.keys(categorias),
+    datasets: [{
+        data: Object.values(categorias),
+        backgroundColor: cores.slice(0, Object.keys(categorias).length),
+        hoverOffset: 4
+    }]
+};
+
+// Configuração do gráfico de categorias
+const configCategoria = {
+    type: 'pie',
+    data: dadosCategoria,
+    options: {
+        responsive: true,
+        plugins: {
+            legend: {
+                position: 'bottom',
+            },
+            title: {
+                display: false
+            }
+        }
+    }
+};
+
+// Criar gráfico de categorias
+new Chart(
+    document.getElementById('graficoCategoria'),
+    configCategoria
+);
+</script>
+{% endblock %} 
