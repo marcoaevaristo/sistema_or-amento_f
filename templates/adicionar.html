@@ -1,68 +1,82 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="row">
-    <div class="col-md-8 offset-md-2">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">Novo Lançamento</h5>
-            </div>
-            <div class="card-body">
-                <form method="POST">
-                    <div class="mb-3">
-                        <label for="titulo" class="form-label">Título</label>
-                        <input type="text" class="form-control" id="titulo" name="titulo" required>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="descricao" class="form-label">Descrição</label>
-                        <textarea class="form-control" id="descricao" name="descricao" rows="3"></textarea>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="valor" class="form-label">Valor (R$)</label>
-                        <input type="number" class="form-control" id="valor" name="valor" step="0.01" required>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="categoria" class="form-label">Categoria</label>
-                        <select class="form-select" id="categoria" name="categoria" required>
-                            <option value="">Selecione uma categoria</option>
-                            <option value="Salário">Salário</option>
-                            <option value="Investimentos">Investimentos</option>
-                            <option value="Alimentação">Alimentação</option>
-                            <option value="Transporte">Transporte</option>
-                            <option value="Moradia">Moradia</option>
-                            <option value="Saúde">Saúde</option>
-                            <option value="Educação">Educação</option>
-                            <option value="Lazer">Lazer</option>
-                            <option value="Outros">Outros</option>
-                        </select>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label class="form-label">Tipo</label>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="tipo" id="receita" value="receita" required>
-                            <label class="form-check-label" for="receita">
-                                Receita
-                            </label>
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">Adicionar Lançamento</h4>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label for="titulo" class="form-label">Título</label>
+                            <input type="text" class="form-control" id="titulo" name="titulo" required>
                         </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="tipo" id="despesa" value="despesa">
-                            <label class="form-check-label" for="despesa">
-                                Despesa
-                            </label>
+                        
+                        <div class="mb-3">
+                            <label for="descricao" class="form-label">Descrição</label>
+                            <textarea class="form-control" id="descricao" name="descricao" rows="3"></textarea>
                         </div>
-                    </div>
-                    
-                    <div class="d-grid gap-2">
-                        <button type="submit" class="btn btn-primary">Salvar</button>
-                        <a href="{{ url_for('index') }}" class="btn btn-secondary">Cancelar</a>
-                    </div>
-                </form>
+                        
+                        <div class="mb-3">
+                            <label for="valor" class="form-label">Valor</label>
+                            <input type="text" class="form-control" id="valor" name="valor" required
+                                   onkeyup="this.value = this.value.replace(/[^0-9,]/g, '').replace(/(,.*?),/g, '$1');">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="data" class="form-label">Data</label>
+                            <input type="date" class="form-control" id="data" name="data" required
+                                   value="{{ datetime.now().strftime('%Y-%m-%d') }}">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="categoria" class="form-label">Categoria</label>
+                            <select class="form-select" id="categoria" name="categoria" required>
+                                <option value="">Selecione uma categoria</option>
+                                <option value="Salário">Salário</option>
+                                <option value="Alimentação">Alimentação</option>
+                                <option value="Transporte">Transporte</option>
+                                <option value="Moradia">Moradia</option>
+                                <option value="Saúde">Saúde</option>
+                                <option value="Educação">Educação</option>
+                                <option value="Lazer">Lazer</option>
+                                <option value="Outros">Outros</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label d-block">Tipo</label>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="tipo" id="receita" value="receita" required>
+                                <label class="form-check-label" for="receita">Receita</label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="tipo" id="despesa" value="despesa" required>
+                                <label class="form-check-label" for="despesa">Despesa</label>
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">Salvar</button>
+                            <a href="{{ url_for('index') }}" class="btn btn-secondary">Cancelar</a>
+                        </div>
+                    </form>
+                </div>
             </div>
         </div>
     </div>
 </div>
+
+<script>
+document.getElementById('valor').addEventListener('input', function(e) {
+    let value = e.target.value;
+    value = value.replace(/\D/g, '');
+    value = (parseInt(value) / 100).toFixed(2);
+    value = value.replace('.', ',');
+    e.target.value = value;
+});
+</script>
 {% endblock %} 

@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <h2 class="mb-4">Relatório Mensal - {{ mes }}/{{ ano }}</h2>
+
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Saldo do Mês</h5>
+                    <h3 class="card-text">{{ saldo }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Total Receitas</h5>
+                    <h3 class="card-text">{{ total_receitas }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-danger text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Total Despesas</h5>
+                    <h3 class="card-text">{{ total_despesas }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Resumo por Categoria</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Categoria</th>
+                                    <th>Receitas</th>
+                                    <th>Despesas</th>
+                                    <th>Saldo</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for categoria, valores in categorias.items() %}
+                                <tr>
+                                    <td>{{ categoria }}</td>
+                                    <td class="text-success">{{ format_currency(valores['receitas']) }}</td>
+                                    <td class="text-danger">{{ format_currency(valores['despesas']) }}</td>
+                                    <td class="{{ 'text-success' if valores['receitas'] - valores['despesas'] >= 0 else 'text-danger' }}">
+                                        {{ format_currency(valores['receitas'] - valores['despesas']) }}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Lançamentos do Mês</h5>
+                    <a href="{{ url_for('exportar_excel', ano=ano, mes=mes) }}" class="btn btn-success">
+                        <i class="fas fa-file-excel"></i> Exportar para Excel
+                    </a>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Título</th>
+                                    <th>Categoria</th>
+                                    <th>Tipo</th>
+                                    <th>Valor</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for lancamento in lancamentos %}
+                                <tr>
+                                    <td>{{ format_date(lancamento.data) }}</td>
+                                    <td>{{ lancamento.titulo }}</td>
+                                    <td>{{ lancamento.categoria }}</td>
+                                    <td>
+                                        <span class="badge bg-{{ 'success' if lancamento.tipo == 'receita' else 'danger' }}">
+                                            {{ lancamento.tipo|title }}
+                                        </span>
+                                    </td>
+                                    <td>{{ format_currency(lancamento.valor) }}</td>
+                                    <td>
+                                        <a href="{{ url_for('editar', id=lancamento.id) }}" class="btn btn-sm btn-warning">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        <a href="{{ url_for('excluir', id=lancamento.id) }}" class="btn btn-sm btn-danger"
+                                            onclick="return confirm('Tem certeza que deseja excluir este lançamento?')">
+                                            <i class="fas fa-trash"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

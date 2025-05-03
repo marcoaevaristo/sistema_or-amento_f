@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, abort
+from flask import Flask, render_template, request, redirect, url_for, flash, abort, send_file
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from datetime import datetime
@@ -6,6 +6,30 @@ from werkzeug.security import generate_password_hash, check_password_hash
 import os
 import logging
 import traceback
+import locale
+import pandas as pd
+from io import BytesIO
+from calendar import monthrange
+
+# Configurar locale para português do Brasil
+try:
+    locale.setlocale(locale.LC_ALL, 'pt_BR.UTF-8')
+except locale.Error:
+    try:
+        locale.setlocale(locale.LC_ALL, 'Portuguese_Brazil.1252')
+    except locale.Error:
+        locale.setlocale(locale.LC_ALL, '')
+
+# Função para formatar números com vírgula
+def format_currency(value):
+    try:
+        return locale.currency(value, grouping=True, symbol=True)
+    except:
+        return f"R$ {value:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+# Função para formatar data
+def format_date(date):
+    return date.strftime('%d/%m/%Y')
 
 # Configuração de logging detalhado
 logging.basicConfig(level=logging.DEBUG)
@@ -101,7 +125,19 @@ def index():
         total_receitas = sum(o.valor for o in orcamentos if o.tipo == 'receita')
         total_despesas = sum(o.valor for o in orcamentos if o.tipo == 'despesa')
         saldo = total_receitas - total_despesas
-        return render_template('index.html', orcamentos=orcamentos, saldo=saldo, total_receitas=total_receitas, total_despesas=total_despesas)
+        
+        # Formatar valores para exibição
+        saldo_formatado = format_currency(saldo)
+        total_receitas_formatado = format_currency(total_receitas)
+        total_despesas_formatado = format_currency(total_despesas)
+        
+        return render_template('index.html', 
+                             orcamentos=orcamentos,
+                             saldo=saldo_formatado,
+                             total_receitas=total_receitas_formatado,
+                             total_despesas=total_despesas_formatado,
+                             format_currency=format_currency,
+                             format_date=format_date)
     return redirect(url_for('login'))
 
 @app.route('/adicionar', methods=['GET', 'POST'])
@@ -111,9 +147,10 @@ def adicionar():
         try:
             titulo = request.form.get('titulo')
             descricao = request.form.get('descricao', '')
-            valor_str = request.form.get('valor', '0')
+            valor_str = request.form.get('valor', '0').replace('.', '').replace(',', '.')
             categoria = request.form.get('categoria')
             tipo = request.form.get('tipo')
+            data_str = request.form.get('data')
 
             # Validações
             if not titulo:
@@ -129,9 +166,10 @@ def adicionar():
                 return render_template('adicionar.html')
 
             try:
-                valor = float(valor_str.replace(',', '.'))
+                valor = float(valor_str)
+                data = datetime.strptime(data_str, '%Y-%m-%d') if data_str else datetime.now()
             except ValueError:
-                flash('Valor inválido! Use apenas números.', 'danger')
+                flash('Valor ou data inválidos!', 'danger')
                 return render_template('adicionar.html')
 
             novo_orcamento = Orcamento(
@@ -140,6 +178,7 @@ def adicionar():
                 valor=valor,
                 categoria=categoria,
                 tipo=tipo,
+                data=data,
                 user_id=current_user.id
             )
             
@@ -261,6 +300,113 @@ def excluir(id):
         flash('Erro ao excluir o orçamento. Por favor, tente novamente.', 'danger')
     
     return redirect(url_for('index'))
+
+@app.route('/relatorio_mensal/<int:ano>/<int:mes>')
+@login_required
+def relatorio_mensal(ano, mes):
+    # Obter primeiro e último dia do mês
+    primeiro_dia = datetime(ano, mes, 1)
+    ultimo_dia = datetime(ano, mes, monthrange(ano, mes)[1], 23, 59, 59)
+    
+    # Buscar lançamentos do mês
+    lancamentos = Orcamento.query.filter(
+        Orcamento.user_id == current_user.id,
+        Orcamento.data >= primeiro_dia,
+        Orcamento.data <= ultimo_dia
+    ).order_by(Orcamento.data).all()
+    
+    # Calcular totais
+    total_receitas = sum(l.valor for l in lancamentos if l.tipo == 'receita')
+    total_despesas = sum(l.valor for l in lancamentos if l.tipo == 'despesa')
+    saldo = total_receitas - total_despesas
+    
+    # Agrupar por categoria
+    categorias = {}
+    for l in lancamentos:
+        if l.categoria not in categorias:
+            categorias[l.categoria] = {'receitas': 0, 'despesas': 0}
+        if l.tipo == 'receita':
+            categorias[l.categoria]['receitas'] += l.valor
+        else:
+            categorias[l.categoria]['despesas'] += l.valor
+    
+    return render_template('relatorio_mensal.html',
+                         lancamentos=lancamentos,
+                         total_receitas=format_currency(total_receitas),
+                         total_despesas=format_currency(total_despesas),
+                         saldo=format_currency(saldo),
+                         categorias=categorias,
+                         format_currency=format_currency,
+                         format_date=format_date,
+                         mes=mes,
+                         ano=ano)
+
+@app.route('/exportar_excel/<int:ano>/<int:mes>')
+@login_required
+def exportar_excel(ano, mes):
+    try:
+        # Obter dados do mês
+        primeiro_dia = datetime(ano, mes, 1)
+        ultimo_dia = datetime(ano, mes, monthrange(ano, mes)[1], 23, 59, 59)
+        
+        lancamentos = Orcamento.query.filter(
+            Orcamento.user_id == current_user.id,
+            Orcamento.data >= primeiro_dia,
+            Orcamento.data <= ultimo_dia
+        ).order_by(Orcamento.data).all()
+        
+        # Criar DataFrame
+        dados = []
+        for l in lancamentos:
+            dados.append({
+                'Data': l.data.strftime('%d/%m/%Y'),
+                'Título': l.titulo,
+                'Descrição': l.descricao,
+                'Categoria': l.categoria,
+                'Tipo': l.tipo.capitalize(),
+                'Valor': l.valor
+            })
+        
+        df = pd.DataFrame(dados)
+        
+        # Calcular totais
+        total_receitas = sum(l.valor for l in lancamentos if l.tipo == 'receita')
+        total_despesas = sum(l.valor for l in lancamentos if l.tipo == 'despesa')
+        saldo = total_receitas - total_despesas
+        
+        # Criar arquivo Excel
+        output = BytesIO()
+        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+            # Planilha de lançamentos
+            df.to_excel(writer, sheet_name='Lançamentos', index=False)
+            workbook = writer.book
+            worksheet = writer.sheets['Lançamentos']
+            
+            # Formatar células
+            money_format = workbook.add_format({'num_format': 'R$ #,##0.00'})
+            worksheet.set_column('E:E', 15, money_format)  # Coluna de valores
+            
+            # Adicionar totais
+            row = len(dados) + 3
+            worksheet.write(row, 0, 'Total Receitas:')
+            worksheet.write(row, 1, total_receitas, money_format)
+            worksheet.write(row + 1, 0, 'Total Despesas:')
+            worksheet.write(row + 1, 1, total_despesas, money_format)
+            worksheet.write(row + 2, 0, 'Saldo:')
+            worksheet.write(row + 2, 1, saldo, money_format)
+        
+        output.seek(0)
+        return send_file(
+            output,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            as_attachment=True,
+            download_name=f'relatorio_{mes}_{ano}.xlsx'
+        )
+        
+    except Exception as e:
+        logger.error(f"Erro ao exportar Excel: {str(e)}")
+        flash('Erro ao gerar relatório Excel.', 'danger')
+        return redirect(url_for('index'))
 
 # Manipulador de erros para debug
 @app.errorhandler(500)

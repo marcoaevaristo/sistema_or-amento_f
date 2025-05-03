@@ -15,6 +15,10 @@ services:
         fromDatabase:
           name: sistema-orcamento-db
           property: connectionString
+      - key: LANG
+        value: pt_BR.UTF-8
+      - key: LC_ALL
+        value: pt_BR.UTF-8
 
 databases:
   - name: sistema-orcamento-db
