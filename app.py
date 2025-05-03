@@ -43,6 +43,8 @@ DATABASE_URL = os.environ.get('DATABASE_URL')
 if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
+logger.info(f"Configurando banco de dados com URL: {DATABASE_URL or 'sqlite:///orcamento.db'}")
+
 app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL or 'sqlite:///orcamento.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
@@ -429,10 +431,28 @@ def internal_error(error):
 with app.app_context():
     try:
         logger.info("Tentando criar as tabelas do banco de dados...")
+        # Verificar conexão com o banco
+        engine = db.engine
+        connection = engine.connect()
+        logger.info("Conexão com o banco estabelecida com sucesso!")
+        
+        # Listar tabelas existentes antes da criação
+        inspector = db.inspect(engine)
+        existing_tables = inspector.get_table_names()
+        logger.info(f"Tabelas existentes antes da criação: {existing_tables}")
+        
+        # Criar tabelas
         db.create_all()
+        
+        # Verificar tabelas criadas
+        inspector = db.inspect(engine)
+        tables = inspector.get_table_names()
+        logger.info(f"Tabelas após criação: {tables}")
         logger.info("Tabelas criadas com sucesso!")
+        
+        connection.close()
     except Exception as e:
-        logger.error(f"Erro ao criar tabelas: {str(e)}")
+        logger.error(f"Erro ao criar tabelas: {str(e)}\n{traceback.format_exc()}")
 
 if __name__ == '__main__':
     app.run(debug=True) 
